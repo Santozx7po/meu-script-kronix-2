@@ -1,0 +1,421 @@
+--[[
+    =======================================================
+    KRONIX HUB VIP - SINTONIA RP (AIMBOT & AUTO FARM)
+    =======================================================
+]]
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local HttpService = game:GetService("HttpService")
+
+local SECRET_KEY = "kronixvip"
+
+-- TEMA PREMIUM (Preto e Dourado)
+local Theme = {
+    BgMain = Color3.fromRGB(15, 15, 15),
+    BgSidebar = Color3.fromRGB(25, 25, 25),
+    Accent = Color3.fromRGB(255, 215, 0),
+    AccentDark = Color3.fromRGB(200, 160, 0),
+    Text = Color3.fromRGB(255, 255, 255),
+    TextDim = Color3.fromRGB(180, 180, 180),
+    ButtonOff = Color3.fromRGB(40, 40, 40),
+    Green = Color3.fromRGB(0, 255, 150),
+    Red = Color3.fromRGB(255, 50, 50)
+}
+
+local State = {
+    AimbotEnabled = false,
+    FarmEnabled = false,
+    AimSmoothness = 0.2,
+    AimFOV = 150,
+    TeamCheck = true,
+    WallCheck = true
+}
+
+-- ===== 1. SPLASH SCREEN + KEY VIP =====
+local function ShowSplashScreen(callback)
+    local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    gui.Name = "KronixSplashVIP"
+    gui.DisplayOrder = 999
+    local bg = Instance.new("Frame", gui)
+    bg.Size = UDim2.new(1, 0, 1, 0)
+    bg.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+    local title = Instance.new("TextLabel", bg)
+    title.Size = UDim2.new(0, 300, 0, 50)
+    title.Position = UDim2.new(0.5, -150, 0.5, -50)
+    title.BackgroundTransparency = 1
+    title.Text = "👑 KRONIX VIP"
+    title.TextColor3 = Theme.Accent
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 30
+    task.spawn(function()
+        task.wait(2)
+        gui:Destroy()
+        callback()
+    end)
+end
+
+local function ShowKeyUI()
+    local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    local keyFrame = Instance.new("Frame", gui)
+    keyFrame.Size = UDim2.new(0, 280, 0, 180)
+    keyFrame.Position = UDim2.new(0.5, -140, 0.5, -90)
+    keyFrame.BackgroundColor3 = Theme.BgMain
+    Instance.new("UICorner", keyFrame).CornerRadius = UDim.new(0, 12)
+    local stroke = Instance.new("UIStroke", keyFrame)
+    stroke.Color = Theme.Accent
+
+    local textBox = Instance.new("TextBox", keyFrame)
+    textBox.Size = UDim2.new(0.8, 0, 0, 35)
+    textBox.Position = UDim2.new(0.1, 0, 0, 50)
+    textBox.BackgroundColor3 = Theme.BgSidebar
+    textBox.TextColor3 = Theme.Text
+    textBox.PlaceholderText = "Digite a Key VIP"
+
+    local checkBtn = Instance.new("TextButton", keyFrame)
+    checkBtn.Size = UDim2.new(0.8, 0, 0, 35)
+    checkBtn.Position = UDim2.new(0.1, 0, 0, 100)
+    checkBtn.BackgroundColor3 = Theme.Accent
+    checkBtn.Text = "ENTRAR"
+    checkBtn.TextColor3 = Color3.fromRGB(0, 0, 0)
+    checkBtn.Font = Enum.Font.GothamBold
+    Instance.new("UICorner", checkBtn).CornerRadius = UDim.new(0, 6)
+
+    checkBtn.MouseButton1Click:Connect(function()
+        if string.lower(textBox.Text) == SECRET_KEY then
+            gui:Destroy()
+            LoadMainPanel()
+        else
+            checkBtn.Text = "KEY ERRADA"
+            task.wait(1)
+            checkBtn.Text = "ENTRAR"
+        end
+    end)
+end
+
+-- ===== 2. UI AUXILIAR =====
+local function CreateSettingRow(parent, titleText, descText, btnText, order)
+    local row = Instance.new("Frame", parent)
+    row.Size = UDim2.new(1, -10, 0, 55)
+    row.BackgroundColor3 = Theme.BgSidebar
+    row.BackgroundTransparency = 0.2
+    row.LayoutOrder = order
+    row.ZIndex = 2
+    Instance.new("UICorner", row).CornerRadius = UDim.new(0, 8)
+    
+    local title = Instance.new("TextLabel", row)
+    title.Size = UDim2.new(1, -90, 0, 20)
+    title.Position = UDim2.new(0, 10, 0, 8)
+    title.BackgroundTransparency = 1
+    title.Text = titleText
+    title.TextColor3 = Theme.Text
+    title.Font = Enum.Font.GothamBold
+    title.TextSize = 13
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.Name = "TitleLabel"
+    title.ZIndex = 2
+
+    local desc = Instance.new("TextLabel", row)
+    desc.Size = UDim2.new(1, -90, 0, 20)
+    desc.Position = UDim2.new(0, 10, 0, 26)
+    desc.BackgroundTransparency = 1
+    desc.Text = descText
+    desc.TextColor3 = Theme.TextDim
+    desc.Font = Enum.Font.Gotham
+    desc.TextSize = 10
+    desc.TextXAlignment = Enum.TextXAlignment.Left
+    desc.ZIndex = 2
+
+    local btn = Instance.new("TextButton", row)
+    btn.Size = UDim2.new(0, 75, 0, 28)
+    btn.Position = UDim2.new(1, -85, 0.5, -14)
+    btn.BackgroundColor3 = Theme.ButtonOff
+    btn.Text = btnText
+    btn.TextColor3 = Theme.Text
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 11
+    btn.ZIndex = 2
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+    
+    return btn
+end
+
+-- ===== 3. LÓGICA DO AIMBOT =====
+local function GetClosestPlayer()
+    local closest = nil
+    local shortestDist = State.AimFOV
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local char = player.Character
+            local hum = char:FindFirstChildOfClass("Humanoid")
+            
+            if hum and hum.Health > 0 then
+                -- Se o TeamCheck estiver ligado, verifica se é do mesmo time
+                if not State.TeamCheck or player.Team ~= LocalPlayer.Team then
+                    local root = char.HumanoidRootPart
+                    local screenPos, onScreen = Camera:WorldToViewportPoint(root.Position)
+                    
+                    if onScreen then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2)).Magnitude
+                        if dist < shortestDist then
+                            -- WallCheck (Verifica se tem parede)
+                            local ray = Ray.new(Camera.CFrame.Position, (root.Position - Camera.CFrame.Position).Unit * 500)
+                            local hit = workspace:FindPartOnRay(ray, LocalPlayer.Character)
+                            
+                            if not State.WallCheck or (hit and hit:IsDescendantOf(char)) then
+                                shortestDist = dist
+                                closest = char
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return closest
+end
+
+RunService.RenderStepped:Connect(function()
+    if State.AimbotEnabled then
+        local target = GetClosestPlayer()
+        if target and target:FindFirstChild(State.AimPart) then
+            local targetPos = target[State.AimPart].Position
+            local currentCFrame = Camera.CFrame
+            local newCFrame = CFrame.new(currentCFrame.Position, targetPos)
+            
+            -- Move a câmera suavemente para o alvo
+            Camera.CFrame = currentCFrame:Lerp(newCFrame, State.AimSmoothness)
+        end
+    end
+end)
+
+-- ===== 4. LÓGICA DO AUTO FARM (PESCA) =====
+-- (Adaptação genérica para tentar interagir com o sistema de pesca)
+local function FarmLoop()
+    task.spawn(function()
+        while task.wait(1) do
+            if State.FarmEnabled then
+                local char = LocalPlayer.Character
+                if not char then continue end
+                
+                -- Simula o clique do mouse para pescar
+                local VirtualUser = game:GetService("VirtualUser")
+                pcall(function()
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton1(Vector2.new(Camera.ViewportSize.X/2, Camera.ViewportSize.Y/2))
+                end)
+            end
+        end
+    end)
+end
+
+-- ===== 5. PAINEL PRINCIPAL VIP =====
+function LoadMainPanel()
+    local gui = Instance.new("ScreenGui", LocalPlayer:WaitForChild("PlayerGui"))
+    gui.Name = "KronixHubVIP"
+    gui.ResetOnSpawn = false
+
+    local floatBtn = Instance.new("TextButton", gui)
+    floatBtn.Size = UDim2.new(0, 50, 0, 50)
+    floatBtn.Position = UDim2.new(0, 10, 0.5, -25)
+    floatBtn.BackgroundColor3 = Theme.BgMain
+    floatBtn.Text = "👑"
+    floatBtn.TextColor3 = Theme.Accent
+    floatBtn.Font = Enum.Font.GothamBlack
+    floatBtn.TextSize = 24
+    floatBtn.Visible = false
+    floatBtn.Draggable = true
+    Instance.new("UICorner", floatBtn).CornerRadius = UDim.new(1, 0)
+
+    local main = Instance.new("Frame", gui)
+    main.Size = UDim2.new(0, 550, 0, 350)
+    main.Position = UDim2.new(0.5, -275, 0.5, -175)
+    main.BackgroundColor3 = Theme.BgMain
+    main.Active = true
+    main.Draggable = true
+    main.ClipsDescendants = true
+    Instance.new("UICorner", main).CornerRadius = UDim.new(0, 10)
+    local mStroke = Instance.new("UIStroke", main)
+    mStroke.Color = Theme.Accent
+    mStroke.Thickness = 2
+
+    local bgImage = Instance.new("ImageLabel", main)
+    bgImage.Size = UDim2.new(1, 0, 1, 0)
+    bgImage.BackgroundTransparency = 1
+    bgImage.Image = "rbxassetid://SEU_ID_AQUI" -- <--- COLOQUE O ID DA IMAGEM DO SINTONIA AQUI
+    bgImage.ImageTransparency = 0.6
+    bgImage.ScaleType = Enum.ScaleType.Crop
+    bgImage.ZIndex = 1
+
+    local header = Instance.new("Frame", main)
+    header.Size = UDim2.new(1, 0, 0, 40)
+    header.BackgroundTransparency = 1
+    header.ZIndex = 2
+    
+    local title = Instance.new("TextLabel", header)
+    title.Size = UDim2.new(1, -100, 1, 0)
+    title.Position = UDim2.new(0, 15, 0, 0)
+    title.BackgroundTransparency = 1
+    title.Text = "👑 KRONIX HUB VIP | Sintonia RP"
+    title.TextColor3 = Theme.Accent
+    title.Font = Enum.Font.GothamBlack
+    title.TextSize = 14
+    title.TextXAlignment = Enum.TextXAlignment.Left
+    title.ZIndex = 2
+
+    local closeBtn = Instance.new("TextButton", header)
+    closeBtn.Size = UDim2.new(0, 30, 0, 30)
+    closeBtn.Position = UDim2.new(1, -40, 0.5, -15)
+    closeBtn.BackgroundColor3 = Theme.ButtonOff
+    closeBtn.Text = "X"
+    closeBtn.TextColor3 = Theme.Text
+    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.TextSize = 12
+    closeBtn.ZIndex = 2
+    Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 4)
+    
+    local minBtn = Instance.new("TextButton", header)
+    minBtn.Size = UDim2.new(0, 30, 0, 30)
+    minBtn.Position = UDim2.new(1, -80, 0.5, -15)
+    minBtn.BackgroundColor3 = Theme.ButtonOff
+    minBtn.Text = "-"
+    minBtn.TextColor3 = Theme.Text
+    minBtn.Font = Enum.Font.GothamBold
+    minBtn.TextSize = 16
+    minBtn.ZIndex = 2
+    Instance.new("UICorner", minBtn).CornerRadius = UDim.new(0, 4)
+
+    minBtn.MouseButton1Click:Connect(function() main.Visible = false; floatBtn.Visible = true end)
+    floatBtn.MouseButton1Click:Connect(function() main.Visible = true; floatBtn.Visible = false end)
+    closeBtn.MouseButton1Click:Connect(function() gui:Destroy() end)
+
+    local sidebar = Instance.new("Frame", main)
+    sidebar.Size = UDim2.new(0, 130, 1, -50)
+    sidebar.Position = UDim2.new(0, 10, 0, 40)
+    sidebar.BackgroundColor3 = Theme.BgSidebar
+    sidebar.BackgroundTransparency = 0.4
+    sidebar.ZIndex = 2
+    Instance.new("UICorner", sidebar).CornerRadius = UDim.new(0, 8)
+    
+    local sideLayout = Instance.new("UIListLayout", sidebar)
+    sideLayout.Padding = UDim.new(0, 5)
+    sideLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+    sideLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- Abas
+    local tabPvp = Instance.new("TextButton", sidebar)
+    tabPvp.Size = UDim2.new(0.9, 0, 0, 35)
+    tabPvp.BackgroundColor3 = Theme.AccentDark
+    tabPvp.Text = "⚔️ PVP"
+    tabPvp.TextColor3 = Color3.fromRGB(0,0,0)
+    tabPvp.Font = Enum.Font.GothamBold
+    tabPvp.LayoutOrder = 1
+    tabPvp.ZIndex = 2
+    Instance.new("UICorner", tabPvp).CornerRadius = UDim.new(0, 6)
+
+    local tabFarm = Instance.new("TextButton", sidebar)
+    tabFarm.Size = UDim2.new(0.9, 0, 0, 35)
+    tabFarm.BackgroundColor3 = Theme.BgMain
+    tabFarm.Text = "🎣 Farm"
+    tabFarm.TextColor3 = Theme.Text
+    tabFarm.Font = Enum.Font.GothamBold
+    tabFarm.LayoutOrder = 2
+    tabFarm.ZIndex = 2
+    Instance.new("UICorner", tabFarm).CornerRadius = UDim.new(0, 6)
+
+    -- Conteúdo
+    local content = Instance.new("ScrollingFrame", main)
+    content.Size = UDim2.new(1, -160, 1, -50)
+    content.Position = UDim2.new(0, 150, 0, 40)
+    content.BackgroundTransparency = 1
+    content.ScrollBarThickness = 2
+    content.ScrollBarImageColor3 = Theme.Accent
+    content.ZIndex = 2
+    local contentLayout = Instance.new("UIListLayout", content)
+    contentLayout.Padding = UDim.new(0, 8)
+    contentLayout.SortOrder = Enum.SortOrder.LayoutOrder
+
+    -- ===== PÁGINA PVP =====
+    local pvpFrame = Instance.new("Frame", content)
+    pvpFrame.Size = UDim2.new(1, -10, 0, 400)
+    pvpFrame.BackgroundTransparency = 1
+    pvpFrame.LayoutOrder = 1
+    pvpFrame.ZIndex = 2
+    local pvpLayout = Instance.new("UIListLayout", pvpFrame)
+    pvpLayout.Padding = UDim.new(0, 8)
+
+    local aimbotBtn = CreateSettingRow(pvpFrame, "Aimbot", "Trava a mira no inimigo", "OFF", 1)
+    aimbotBtn.MouseButton1Click:Connect(function()
+        State.AimbotEnabled = not State.AimbotEnabled
+        aimbotBtn.Text = State.AimbotEnabled and "ON" or "OFF"
+        aimbotBtn.BackgroundColor3 = State.AimbotEnabled and Theme.Green or Theme.ButtonOff
+    end)
+
+    local aimPartBtn = CreateSettingRow(pvpFrame, "Parte da Mira", "Cabeça ou Corpo", "HEAD", 2)
+    aimPartBtn.MouseButton1Click:Connect(function()
+        if State.AimPart == "Head" then
+            State.AimPart = "HumanoidRootPart"
+            aimPartBtn.Text = "CORPO"
+        else
+            State.AimPart = "Head"
+            aimPartBtn.Text = "HEAD"
+        end
+    end)
+
+    local teamBtn = CreateSettingRow(pvpFrame, "Team Check", "Não mira em aliados", "ON", 3)
+    teamBtn.BackgroundColor3 = Theme.Green
+    teamBtn.MouseButton1Click:Connect(function()
+        State.TeamCheck = not State.TeamCheck
+        teamBtn.Text = State.TeamCheck and "ON" or "OFF"
+        teamBtn.BackgroundColor3 = State.TeamCheck and Theme.Green or Theme.ButtonOff
+    end)
+
+    local wallBtn = CreateSettingRow(pvpFrame, "Wall Check", "Não mira através de paredes", "ON", 4)
+    wallBtn.BackgroundColor3 = Theme.Green
+    wallBtn.MouseButton1Click:Connect(function()
+        State.WallCheck = not State.WallCheck
+        wallBtn.Text = State.WallCheck and "ON" or "OFF"
+        wallBtn.BackgroundColor3 = State.WallCheck and Theme.Green or Theme.ButtonOff
+    end)
+
+    -- ===== PÁGINA FARM =====
+    local farmFrame = Instance.new("Frame", content)
+    farmFrame.Size = UDim2.new(1, -10, 0, 400)
+    farmFrame.BackgroundTransparency = 1
+    farmFrame.LayoutOrder = 2
+    farmFrame.Visible = false
+    farmFrame.ZIndex = 2
+    local farmLayout = Instance.new("UIListLayout", farmFrame)
+    farmLayout.Padding = UDim.new(0, 8)
+
+    local farmBtn = CreateSettingRow(farmFrame, "Auto Pescar", "Pesca automaticamente", "OFF", 1)
+    farmBtn.MouseButton1Click:Connect(function()
+        State.FarmEnabled = not State.FarmEnabled
+        farmBtn.Text = State.FarmEnabled and "ON" or "OFF"
+        farmBtn.BackgroundColor3 = State.FarmEnabled and Theme.Green or Theme.ButtonOff
+        if State.FarmEnabled then FarmLoop() end
+    end)
+
+    -- Controle das Abas
+    tabPvp.MouseButton1Click:Connect(function()
+        pvpFrame.Visible = true
+        farmFrame.Visible = false
+        tabPvp.BackgroundColor3 = Theme.AccentDark
+        tabFarm.BackgroundColor3 = Theme.BgMain
+    end)
+
+    tabFarm.MouseButton1Click:Connect(function()
+        pvpFrame.Visible = false
+        farmFrame.Visible = true
+        tabFarm.BackgroundColor3 = Theme.AccentDark
+        tabPvp.BackgroundColor3 = Theme.BgMain
+    end)
+end
+
+ShowSplashScreen(function()
+    ShowKeyUI()
+end)
