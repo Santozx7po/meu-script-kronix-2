@@ -246,7 +246,7 @@ function LoadMainPanel()
     local bgImage = Instance.new("ImageLabel", main)
     bgImage.Size = UDim2.new(1, 0, 1, 0)
     bgImage.BackgroundTransparency = 1
-    bgImage.Image = "rbxassetid://SEU_ID_AQUI" -- <--- COLOQUE O ID DA IMAGEM DO SINTONIA AQUI
+    bgImage.Image = "rbxassetid://1572388090687783042" -- <--- COLOQUE O ID DA IMAGEM DO SINTONIA AQUI
     bgImage.ImageTransparency = 0.6
     bgImage.ScaleType = Enum.ScaleType.Crop
     bgImage.ZIndex = 1
